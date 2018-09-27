@@ -1,5 +1,6 @@
-import { Wechaty } from 'wechaty';
+import { Wechaty, Message } from 'wechaty';
 import * as QrTerm from 'qrcode-terminal';
+import { MessageType } from 'wechaty-puppet';
 
 const bot = new Wechaty();
 
@@ -20,26 +21,36 @@ function handleLogin(user) {
 }
 
 function handleScan(qrcode, status) {
-    const qrcodePic = QrTerm.generate(qrcode, {small: true})
+    QrTerm.generate(qrcode, {small: true})
 
-    console.log(`${status} 扫描二维码登录 ${qrcodePic} \n`)
+    console.log(`${status} 扫描二维码登录 \n`)
 }
 
 function handleError(e) {
     console.log('出错了', e)
 }
 
-async function handleMessage(msg) {
+async function handleMessage(msg: Message) {
     const contact = msg.from()
     const text = msg.text()
     const room = msg.room()
-    if (room) {
-      const topic = await room.topic()
-      console.log(`收到来自群: ${topic} 下: ${contact.name()} 的消息: ${text}`)
-    } else {
-      console.log(`收到来自: ${contact.name()} 的消息: ${text}`)
+    const type = msg.type()
+
+    if (!msg.self()) {
+        switch(type) {
+            case MessageType.Text || MessageType.Url: // 文字 自动回复
+                msg.say(text);
+                break;
+            case MessageType.Image || MessageType.Video:
+                const filebox = await msg.toFileBox();
+                await msg.say(filebox);
+                break;
+            default:
+                msg.say('还不能处理的类型， 别瞎发了');
+                console.log(`不能处理的类型: ${type}`)
+        }
     }
-    console.log(`收到信息 ${msg.text()} ${msg.from()}`)
+
 }
 
 export function start() {
